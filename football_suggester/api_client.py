@@ -26,70 +26,31 @@ def fetch_upcoming_games(days_ahead: int = 7, league_id: str = None, season: str
         return []
 
     today = datetime.date.today()
-    end_date = today + datetime.timedelta(days=days_ahead)
+    date_from_str = today.strftime("%Y-%m-%d")
+    date_to_str = (today + datetime.timedelta(days=days_ahead)).strftime("%Y-%m-%d")
 
-    params = {
-        "date_from": today.strftime("%Y-%m-%d"),
-        "date_to": end_date.strftime("%Y-%m-%d"),
-        # "status": "NS" # Not Started games
-    }
-
-    # The API seems to prefer 'date' for a single day, or 'from'/'to' for a range.
-    # Let's adjust to use 'from' and 'to' as per their docs for date ranges,
-    # or just 'date' if we wanted a single day.
-    # For upcoming, we'll use 'live' with 'all' to get NS, and filter later, or specify date range.
-    # The API endpoint for fixtures with date range:
-    # https://v3.football.api-sports.io/fixtures?date=YYYY-MM-DD (single day)
-    # https://v3.football.api-sports.io/fixtures?from=YYYY-MM-DD&to=YYYY-MM-DD (date range)
-    # Let's stick to date range.
-
-    # The API uses 'from' and 'to' for date ranges with /fixtures endpoint.
-    # It seems my initial thought on params was slightly off.
-    # Correcting based on typical API patterns and api-football docs.
-    # The API uses 'date' for a single day, or 'from' and 'to' for a range for some things,
-    # but for general fixtures, it's often by 'date', 'league'/'season', or 'live'.
-    # Let's use the 'date' parameter for each day in the range to ensure we get all games.
-    # Or, more efficiently, use from/to if the API supports it well for fixtures.
-    # The documentation suggests /fixtures can take 'date', 'season', 'league', 'live', 'next', 'last'.
-    # 'next=<number_of_fixtures>' or 'last=<number_of_fixtures>' might be simpler.
-    # However, to control the date range precisely, iterating or using from/to is better.
-    # The example at https://www.api-football.com/documentation-v3#tag/Fixtures/operation/get-fixtures
-    # shows `date`, `league`, `season`.
-    # If we want a range, we might need to make multiple calls or find a better parameter.
-    # The API docs state: "The Paging is not available for this endpoint. (fixtures with date)"
-    # "To retrieve all fixtures for a date range, you will need to make a request for each date."
-    # This is inefficient. Let's check if 'live' or 'status' can help.
-    # "status : fixture status ( Check Fixture Status )" -> NS (Not Started)
-
-    # Let's try with "season" and "league" if provided, otherwise fetch broadly by date range.
-    # If fetching broadly, we might hit limits or get too much data.
-    # A common pattern for "upcoming" is to specify a `status=NS` (Not Started).
-
+    # Base parameters for upcoming fixtures within the date range
     current_params = {
-        "from": today.strftime("%Y-%m-%d"),
-        "to": end_date.strftime("%Y-%m-%d"),
-        "status": "NS" # Not Started
+        "from": date_from_str,
+        "to": date_to_str,
+        "status": "NS"  # Not Started
     }
 
     if league_id:
-        if not season:
-            logger.warning("Season must be provided if league_id is specified. Fetching without league filter.")
-        else:
-            current_params["league"] = str(league_id)
+        current_params["league"] = str(league_id)
+        # Season is now optional. If provided, use it.
+        # Otherwise, the API should return fixtures for the active season within the given date range for the league.
+        if season:
             current_params["season"] = str(season)
-            # If league and season are specified, 'from' and 'to' might not be needed or work the same way.
-            # The API usually expects either date-based or league/season based queries for fixtures.
-            # Let's assume for league/season, we want all 'NS' games in that league/season.
-            # We might remove 'from' and 'to' if 'league' and 'season' are primary.
-            # Documentation: "You can combine with status parameter."
-            # "If you use the league and season parameters you will have all the fixtures of the season."
-            # So, if league and season are given, we get all NS for that season.
-            # If we also want to limit by date, the 'from'/'to' should still apply.
-            logger.info(f"Fetching upcoming games for league {league_id}, season {season} from {current_params['from']} to {current_params['to']}.")
-
+            logger.info(f"Fetching upcoming games for league {league_id}, season {season}, from {date_from_str} to {date_to_str}.")
+        else:
+            logger.info(f"Fetching upcoming games for league {league_id} (season not specified, relying on date range) from {date_from_str} to {date_to_str}.")
+    else:
+        # Fetching broadly if no specific league_id is provided
+        logger.info(f"Fetching all upcoming games from {date_from_str} to {date_to_str}.")
 
     headers = {
-        'x-rapidapi-host': API_FOOTBALL_URL.replace('https://', ''), # Host without schema
+        'x-rapidapi-host': API_FOOTBALL_URL.replace('https://', ''),
         'x-rapidapi-key': API_FOOTBALL_KEY
     }
 

@@ -5,10 +5,15 @@ This service uses AI to suggest interesting football (soccer) matches based on u
 ## Features
 
 - Fetches upcoming football matches from api-football.com.
-- Allows blacklisting of specific leagues or games.
+- **Flexible League/Tournament Monitoring**:
+    - **Whitelist Mode**: Focus on a curated list of your favorite leagues and tournaments.
+    - **Specific League Mode**: Monitor a single league.
+    - **Broad Mode**: Fetch games from all leagues accessible via your API plan.
+- Allows blacklisting of specific leagues or individual games even within whitelisted/targeted leagues.
 - Uses a Large Language Model (LLM) to identify "interesting" matches based on a customizable system prompt.
-- Adds suggested matches as events to a CalDAV-compatible calendar.
+- Adds suggested matches as events to a CalDAV-compatible calendar (checks for duplicates).
 - Runnable as a Docker container.
+- Highly configurable via environment variables.
 
 ## Prerequisites
 
@@ -21,28 +26,32 @@ This service uses AI to suggest interesting football (soccer) matches based on u
 
 The service is configured via environment variables. You can set these directly or use a `.env` file in the project root (this file is gitignored by default). Create a `.env` file by copying `.env.example` and filling in your values.
 
-**Required environment variables** (see `.env.example` for more details and defaults):
+**Core Required Environment Variables** (see `.env.example` for all options and defaults):
 
 - `API_FOOTBALL_KEY`: Your API key for api-football.com.
 - `CALDAV_URL`: The URL of your CalDAV server.
-- `CALDAV_USERNAME`: Your CalDAV username (required if not in URL and server needs auth).
-- `CALDAV_PASSWORD`: Your CalDAV password (required if not in URL and server needs auth).
-- `LLM_PROVIDER`: The LLM provider to use (default: `openai`).
 - `LLM_API_KEY`: Your API key for the chosen LLM provider.
 - `LLM_MODEL`: The specific model to use (e.g., `gpt-3.5-turbo`, `gpt-4`).
 
-**Optional environment variables:**
+**Key Configuration Options:**
 
-- `API_FOOTBALL_URL`: Override the default api-football base URL.
-- `CALDAV_CALENDAR_NAME`: Specific name of the calendar to use on the CalDAV server if it cannot be auto-detected or you want a specific one.
-- `SYSTEM_PROMPT_FILE_PATH`: Path to the system prompt file (default: `system_prompt.txt` in the project root).
-- `BLACKLIST_FILE_PATH`: Path to the blacklist file (default: `blacklist.json` in the project root).
-- `LOG_LEVEL`: Logging level (e.g., `INFO`, `DEBUG`, `WARNING`, `ERROR`. Default: `INFO`).
+- **League Fetching Strategy (see `.env.example` for detailed explanation and examples):**
+    - `WHITELIST_MODE_LEAGUE_IDS`: Comma-separated list of league IDs. If set, only these leagues/tournaments are fetched.
+        - *Example*: `WHITELIST_MODE_LEAGUE_IDS=39,140,135,78,61,2,3` (Top 5 Euro leagues + UCL/UEL). **Note: Verify these IDs with your api-football.com subscription.**
+    - `TARGET_LEAGUE_ID`: If `WHITELIST_MODE_LEAGUE_IDS` is not set, you can specify a single league ID to monitor.
+    - If neither of the above is set, the service runs in **Broad Mode**, fetching from all accessible leagues.
 - `FETCH_DAYS_AHEAD`: How many days ahead to fetch games for (default: `7`).
-- `TARGET_LEAGUE_ID`: Specific league ID to fetch games from (e.g., Premier League `39`). If set, `TARGET_SEASON` is also required.
-- `TARGET_SEASON`: Season year (e.g., `2023` for the 2023-2024 season) - required if `TARGET_LEAGUE_ID` is set.
+- `BLACKLIST_FILE_PATH`: Path to your blacklist JSON file (default: `blacklist.json`).
+- `SYSTEM_PROMPT_FILE_PATH`: Path to your LLM system prompt text file (default: `system_prompt.txt`).
+- `LOG_LEVEL`: Logging detail (e.g., `INFO`, `DEBUG`. Default: `INFO`).
+- `CALDAV_USERNAME`, `CALDAV_PASSWORD`: Credentials for CalDAV if not in `CALDAV_URL`.
+- `CALDAV_CALENDAR_NAME`: Specify a CalDAV calendar name if needed.
+- `TARGET_SEASON`: Rarely needed. Use if you want to fetch games from a specific past season for a `TARGET_LEAGUE_ID`. The API usually infers the current season correctly for date-range queries.
 
-### Blacklist File Format (`blacklist.json` or path from `BLACKLIST_FILE_PATH`)
+### League IDs
+**Important:** League IDs can vary or change. It's crucial to verify the IDs for your desired competitions using your `api-football.com` subscription, for example, by checking the `/leagues` endpoint. An example list of common IDs is provided in `.env.example` for `WHITELIST_MODE_LEAGUE_IDS`.
+
+### Blacklist File (`blacklist.json` or path from `BLACKLIST_FILE_PATH`)
 
 The blacklist file should be a JSON file. See `blacklist.example.json` for the format and examples.
 Content example:

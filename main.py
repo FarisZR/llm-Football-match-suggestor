@@ -40,28 +40,61 @@ def main():
     # --- Fetch Upcoming Games ---
     # Consider making days_ahead, league_id, season configurable if needed
     days_to_fetch = int(os.getenv('FETCH_DAYS_AHEAD', '7'))
-    target_league_id = os.getenv('TARGET_LEAGUE_ID', None)
-    target_season = os.getenv('TARGET_SEASON', None) # e.g. "2023" for 2023-2024 season
 
-    logger.info(f"Fetching upcoming games for the next {days_to_fetch} days.")
-    if target_league_id and target_season:
-        logger.info(f"Filtering for League ID: {target_league_id}, Season: {target_season}")
+    # --- Determine League Fetching Strategy ---
+    all_games_raw = [] # Renamed to avoid confusion with `all_games` var name later if needed by other logic
 
-    all_games = fetch_upcoming_games(
-        days_ahead=days_to_fetch,
-        league_id=target_league_id,
-        season=target_season
-    )
+    # Use a set to ensure league IDs are unique if TARGET_LEAGUE_ID overlaps with WHITELIST_MODE_LEAGUE_IDS
+    # However, the logic below prioritizes WHITELIST_MODE_LEAGUE_IDS, so direct overlap isn't an issue.
 
-    if not all_games:
-        logger.info("No upcoming games fetched. Exiting.")
+    if config.WHITELIST_MODE_LEAGUE_IDS:
+        logger.info(f"Whitelist mode active. Fetching games for league IDs: {config.WHITELIST_MODE_LEAGUE_IDS}")
+        for league_id_wl in config.WHITELIST_MODE_LEAGUE_IDS:
+            # Season is typically not required here, relying on date range.
+            # TARGET_SEASON could be used globally if set, but usually None for whitelist mode.
+            # For simplicity, season is not passed per whitelisted league, relying on global TARGET_SEASON if any.
+            # However, it's better to keep it simple: season=None for whitelist mode.
+            current_target_season = os.getenv('TARGET_SEASON', None) # Allow global season override if really needed
+
+            logger.debug(f"Fetching for whitelisted league ID: {league_id_wl}, season: {current_target_season or 'None'}")
+            games_for_league = fetch_upcoming_games(
+                days_ahead=days_to_fetch,
+                league_id=str(league_id_wl),
+                season=current_target_season
+            )
+            if games_for_league:
+                all_games_raw.extend(games_for_league)
+            # Optional: Add a small delay between API calls if fetching many leagues to be polite to the API
+            if len(config.WHITELIST_MODE_LEAGUE_IDS) > 1:
+                time.sleep(0.5) # 0.5s delay if multiple leagues in whitelist
+
+    elif os.getenv('TARGET_LEAGUE_ID'):
+        target_league_id_str = os.getenv('TARGET_LEAGUE_ID')
+        # TARGET_SEASON is optional, api_client handles it being None
+        target_season_str = os.getenv('TARGET_SEASON', None)
+        logger.info(f"Target league mode active. Fetching for League ID: {target_league_id_str}" +
+                    (f", Season: {target_season_str}" if target_season_str else " (season not specified)."))
+
+        all_games_raw = fetch_upcoming_games(
+            days_ahead=days_to_fetch,
+            league_id=target_league_id_str,
+            season=target_season_str
+        )
+    else:
+        logger.info(f"Broad mode active. Fetching all available games for the next {days_to_fetch} days. This may take a while and retrieve many games.")
+        all_games_raw = fetch_upcoming_games(days_ahead=days_to_fetch)
+
+    if not all_games_raw:
+        logger.info("No upcoming games fetched based on the current strategy (Whitelist, Target League, or Broad). Run finished.")
         return
-    logger.info(f"Fetched {len(all_games)} games initially.")
+    logger.info(f"Fetched {len(all_games_raw)} games initially.")
 
     # --- Filter Games with Blacklist ---
-    filtered_games = filter_games(all_games, blacklist_rules)
+    # Ensure blacklist_rules is defined (it's loaded earlier)
+    filtered_games = filter_games(all_games_raw, blacklist_rules)
+
     if not filtered_games:
-        logger.info("No games remaining after blacklist filtering. Exiting.")
+        logger.info("No games remaining after blacklist filtering. Run finished.")
         return
     logger.info(f"{len(filtered_games)} games remaining after blacklist filtering.")
 

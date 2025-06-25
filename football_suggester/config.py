@@ -71,6 +71,19 @@ if missing_vars:
 # logger.debug(f"SYSTEM_PROMPT_FILE_PATH: {SYSTEM_PROMPT_FILE_PATH}")
 # logger.debug(f"BLACKLIST_FILE_PATH: {BLACKLIST_FILE_PATH}")
 
+# Whitelist mode configuration
+WHITELIST_MODE_LEAGUE_IDS_STR = os.getenv('WHITELIST_MODE_LEAGUE_IDS', None)
+WHITELIST_MODE_LEAGUE_IDS = []
+if WHITELIST_MODE_LEAGUE_IDS_STR:
+    try:
+        WHITELIST_MODE_LEAGUE_IDS = [int(id_str.strip()) for id_str in WHITELIST_MODE_LEAGUE_IDS_STR.split(',') if id_str.strip()]
+        if WHITELIST_MODE_LEAGUE_IDS:
+            logger.info(f"Whitelist mode enabled. Monitoring specific league IDs: {WHITELIST_MODE_LEAGUE_IDS}")
+    except ValueError:
+        logger.error(f"Invalid format for WHITELIST_MODE_LEAGUE_IDS. Expected comma-separated integers. Disabling whitelist mode. Value was: '{WHITELIST_MODE_LEAGUE_IDS_STR}'")
+        WHITELIST_MODE_LEAGUE_IDS = []
+
+
 if not os.path.exists(SYSTEM_PROMPT_FILE_PATH):
     logger.warning(f"System prompt file not found at: {SYSTEM_PROMPT_FILE_PATH}")
 
