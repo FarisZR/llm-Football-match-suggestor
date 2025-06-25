@@ -1,0 +1,15 @@
+# Core libraries
+requests
+python-dotenv
+caldav
+pytz
+
+# For LLM interaction (example, can be changed)
+openai
+
+# For linting and formatting (optional, but good practice)
+flake8
+black
+
+# For testing
+pytest

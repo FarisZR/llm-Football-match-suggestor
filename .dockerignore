@@ -1,0 +1,61 @@
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Python virtual environment
+.venv
+venv/
+ENV/
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# IDE / Editor specific
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Test reports and cache
+.pytest_cache/
+.coverage
+htmlcov/
+tests/__pycache__/
+
+# Secrets / Local Environment
+.env
+*.env
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Other
+README.md
+AGENTS.md
+*.log
+# any other files/directories not needed in the final image
+# e.g., if system_prompt.example.txt or blacklist.example.json are only examples
+# and the actual files are mounted, they might not need to be copied.
+# However, for this service, it's useful to have them as defaults.
+# system_prompt.example.txt
+# blacklist.example.json
+# test_blacklist.json # from blacklist.py test
+# empty_blacklist.json # from blacklist.py test
+```
+
+This `.dockerignore` will help keep the build context clean and the image smaller by excluding unnecessary files.
+Now, I'll update the `Dockerfile` to include the non-root user and ensure the application files are copied correctly.
